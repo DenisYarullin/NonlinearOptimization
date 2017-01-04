@@ -35,6 +35,7 @@ public:
 	typename array<double, N>::iterator begin();
 	typename array<double, N>::iterator end();
 
+	template <size_t N>
 	friend double CalculateDistanceBetweenVertices(const PolyhedronVertex& firstVertex, const PolyhedronVertex& secondVertex);
 
 private:
@@ -148,5 +149,5 @@ double CalculateDistanceBetweenVertices(const PolyhedronVertex<N>& firstVertex, 
 {
 	PolyhedronVertex<N>& tempVertex = secondVertex - firstVertex;
 	std::transform(tempVertex.begin(), tempVertex.end(), tempVertex.begin(), tempVertex.begin(), std::multiplies<double>());
-	return sqrt(std::accumulate(tempVertex.begin(), tempVertex.end()));
+	return sqrt(std::accumulate(tempVertex.begin(), tempVertex.end(), 0.0));
 }

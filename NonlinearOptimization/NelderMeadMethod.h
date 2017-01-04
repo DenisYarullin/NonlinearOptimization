@@ -27,24 +27,25 @@ public:
 	std::pair<PolyhedronVertex<N>, double>& GetLowVertex();
 	std::pair<PolyhedronVertex<N>, double>& GetHighVertex();
 	std::pair<PolyhedronVertex<N>, double>& FindCenterOfGravity();
-	Simplex<N, M>& GetSimplex() const;
+	Simplex<N, M> GetSimplex();
 
 	void ChangeHighVertex(const std::pair<PolyhedronVertex<N>, double>& vertex);
 	void ChangeSimplexVertex(const std::pair<PolyhedronVertex<N>, double>& destinationVertex, const std::pair<PolyhedronVertex<N>, double>& sourceVertex);
+	void ChangeReflectionVertex(const std::pair<PolyhedronVertex<N>, double>& vertex);
+	void ChangeExpansionVertex(const std::pair<PolyhedronVertex<N>, double>& vertex);
+	void ChangeContractionVertex(const std::pair<PolyhedronVertex<N>, double>& vertex);
 
-	void Reflection();
-	void Expansion();
-	void Contraction();
+	std::pair<PolyhedronVertex<N>, double>& Reflection();
+	std::pair<PolyhedronVertex<N>, double>& Expansion();
+	std::pair<PolyhedronVertex<N>, double>& Contraction();
 	void Reduction();
 
+	bool CompareAllVerticesWithReflectionVertexExceptHighVertex();
 	void MakeOneStepMinimization();
 	void ExecuteMinimizationFunctions();
 	void FindMinimum();
 
 private:
-
-	bool CompareAllVerticesWithReflectionVertexExceptHighVertex();
-
 	bool IsAlgorithmCoverged();
 
 private:
@@ -123,7 +124,7 @@ std::pair<PolyhedronVertex<N>, double>& NelderMeadMethod<N, M, Fn>::FindCenterOf
 
 
 template <size_t N, size_t M, typename Fn>
-Simplex<N, M>& NelderMeadMethod<N, M, Fn>::GetSimplex() const
+Simplex<N, M> NelderMeadMethod<N, M, Fn>::GetSimplex()
 {
 	return simplex_;
 }
@@ -149,26 +150,50 @@ void NelderMeadMethod<N, M, Fn>::ChangeSimplexVertex(const std::pair<PolyhedronV
 
 
 template <size_t N, size_t M, typename Fn>
-void NelderMeadMethod<N, M, Fn>::Reflection()
+void NelderMeadMethod<N, M, Fn>::ChangeReflectionVertex(const std::pair<PolyhedronVertex<N>, double>& vertex)
+{
+	reflectionVertex_ = vertex;
+}
+
+
+template <size_t N, size_t M, typename Fn>
+void NelderMeadMethod<N, M, Fn>::ChangeExpansionVertex(const std::pair<PolyhedronVertex<N>, double>& vertex)
+{
+	expansionVertex_ = vertex;
+}
+
+
+template <size_t N, size_t M, typename Fn>
+void NelderMeadMethod<N, M, Fn>::ChangeContractionVertex(const std::pair<PolyhedronVertex<N>, double>& vertex)
+{
+	contractionVertex_ = vertex;
+}
+
+
+template <size_t N, size_t M, typename Fn>
+std::pair<PolyhedronVertex<N>, double>& NelderMeadMethod<N, M, Fn>::Reflection()
 {
 	reflectionVertex_.first = centerOfGravity_.first + alfa_ * (centerOfGravity_.first - highVertex_.first);
 	reflectionVertex_.second = GetValueObjectiveFunction(reflectionVertex_.first);
+	return reflectionVertex_;
 }
 
 
 template <size_t N, size_t M, typename Fn>
-void NelderMeadMethod<N, M, Fn>::Expansion()
+std::pair<PolyhedronVertex<N>, double>& NelderMeadMethod<N, M, Fn>::Expansion()
 {
 	expansionVertex_.first = centerOfGravity_.first + gamma_ * (reflectionVertex_.first - centerOfGravity_.first);
 	expansionVertex_.second = GetValueObjectiveFunction(expansionVertex_.first);
+	return expansionVertex_;
 }
 
 
 template <size_t N, size_t M, typename Fn>
-void NelderMeadMethod<N, M, Fn>::Contraction()
+std::pair<PolyhedronVertex<N>, double>& NelderMeadMethod<N, M, Fn>::Contraction()
 {
 	contractionVertex_.first = centerOfGravity_.first + betta_ * (highVertex_.first - centerOfGravity_.first);
 	contractionVertex_.second = GetValueObjectiveFunction(contractionVertex_.first);
+	return contractionVertex_;
 }
 
 

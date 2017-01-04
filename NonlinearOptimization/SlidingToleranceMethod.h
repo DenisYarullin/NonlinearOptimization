@@ -75,9 +75,26 @@ PolyhedronVertex<N> SlidingToleranceInterpolation<N, InequalityBoundaryCondition
 
 
 template <size_t N, size_t M, typename Fn>
-NelderMeadMethod<N, M, Fn> CreateNelderMeadMethodObject(PolyhedronVertex<N>& initialVertex, double distanceBetweenVertices, Fn fn)
+NelderMeadMethod<N, M, Fn> CreateNelderMeadMethodObject(PolyhedronVertex<N> initialVertex, double distanceBetweenVertices, Fn fn)
 {
-	return NelderMeadMethod<N, M, Fn>(initialVertex, distanceBetweenVertices, fn);
+	NelderMeadMethod<N, M, Fn> object(initialVertex, distanceBetweenVertices, fn);
+	return object;
+}
+
+
+template <size_t N, size_t M, typename ObjectiveFunctionType>
+double CalculateA(NelderMeadMethod<N, M, ObjectiveFunctionType>& nelderMeadMethod)
+{
+	auto& centerOfGravity = nelderMeadMethod.FindCenterOfGravity();
+	auto& simplex = nelderMeadMethod.GetSimplex();
+
+	double tempValue = 0.0, sum = 0.0;
+	for (size_t i = 0; i < simplex.SimplexSize(); ++i)
+	{
+		tempValue = nelderMeadMethod.GetValueObjectiveFunction(simplex[i]) - centerOfGravity.second;
+		sum += (tempValue * tempValue);
+	}
+	return sqrt(sum) / (N + 1);
 }
 
 
@@ -96,12 +113,11 @@ public:
 	double GetValueInequalityBoundaryCriterion(const PolyhedronVertex<N>& vertex, int index) const;
 
 	double CalculateAverageDistanceFromSimplexVerticesToCenterOfGravity();
-	double CalculateA(NelderMeadMethod<N, M, ObjectiveFunctionType>& nelderMeadMethod);
 
 	double CalculateCriterionToleranceFirstStep() const;
 	double CalculateCriterionToleranceKStep();
 	double CalculateDistanceBetweenPolyhedronVertices(const PolyhedronVertex<N>& lowBorderOfChange, const PolyhedronVertex<N>& highBorderOfChange) const;
-	double CalculateCriterionT(const PolyhedronVertex<N>& vertex) const;
+	double CalculateCriterionT(PolyhedronVertex<N> vertex);
 	double CalculateCriterionTolerance();
 
 	int FindTolerantVertex(const std::pair<PolyhedronVertex<N>, double>& initialVertex, std::pair<PolyhedronVertex<N>, double>& tolerantVertex, double t);
@@ -123,6 +139,16 @@ SlidingToleranceMethod<N, M, ObjectiveFunctionType>::SlidingToleranceMethod(doub
 	const std::vector<ObjectiveFunctionType>& equalities, const std::vector<ObjectiveFunctionType>& inequalities) :
 	t_(t), m_(M), r_(N - m_), initialVertex_(initialVertex), func_(func), equalities_(equalities), inequalities_(inequalities), 
 	mainNelderMead_(initialVertex_, t_, func_), criterionTolerancePrev_(-1.0), criterionToleranceCur_(-1.0), stepK_(0)
+{
+}
+
+
+template <size_t N, size_t M, typename ObjectiveFunctionType>
+SlidingToleranceMethod<N, M, ObjectiveFunctionType>::SlidingToleranceMethod(const PolyhedronVertex<N>& lowBorderOfChange, const PolyhedronVertex<N>& highBorderOfChange,
+	const PolyhedronVertex<N>& initialVertex, ObjectiveFunctionType func, const std::vector<ObjectiveFunctionType>& equalities,
+	const std::vector<ObjectiveFunctionType>& inequalities) :
+	t_(CalculateDistanceBetweenPolyhedronVertices(lowBorderOfChange, highBorderOfChange)), m_(M), r_(N - m_), initialVertex_(initialVertex), func_(func), 
+	equalities_(equalities), inequalities_(inequalities), mainNelderMead_(initialVertex_, t_, func_), criterionTolerancePrev_(-1.0), criterionToleranceCur_(-1.0), stepK_(0)
 {
 }
 
@@ -185,22 +211,6 @@ double SlidingToleranceMethod<N, M, ObjectiveFunctionType>::CalculateAverageDist
 
 
 template <size_t N, size_t M, typename ObjectiveFunctionType>
-double SlidingToleranceMethod<N, M, ObjectiveFunctionType>::CalculateA(NelderMeadMethod<N, M, ObjectiveFunctionType>& nelderMeadMethod)
-{
-	auto& centerOfGravity = nelderMeadMethod.FindCenterOfGravity();
-	auto& simplex = nelderMeadMethod.GetSimplex();
-
-	double tempValue = 0.0, sum = 0.0;
-	for (auto& i = simplex.begin(); i != simplex.end(); ++i)
-	{
-		tempValue = nelderMeadMethod.GetValueObjectiveFunction(*i) - centerOfGravity.second;
-		sum += (tempValue * tempValue);
-	}
-	return sqrt(sum) / (N + 1);
-}
-
-
-template <size_t N, size_t M, typename ObjectiveFunctionType>
 double SlidingToleranceMethod<N, M, ObjectiveFunctionType>::CalculateCriterionToleranceKStep()
 {
 	return (m_ + 1.0) / (r_ + 1.0) * CalculateAverageDistanceFromSimplexVerticesToCenterOfGravity();
@@ -208,7 +218,7 @@ double SlidingToleranceMethod<N, M, ObjectiveFunctionType>::CalculateCriterionTo
 
 
 template <size_t N, size_t M, typename ObjectiveFunctionType>
-double SlidingToleranceMethod<N, M, ObjectiveFunctionType>::CalculateCriterionT(const PolyhedronVertex<N>& vertex) const
+double SlidingToleranceMethod<N, M, ObjectiveFunctionType>::CalculateCriterionT(PolyhedronVertex<N> vertex)
 {
 	double functionValue = 0.0, squareSumEqualities = 0.0;
 	for (size_t i = 0; i < equalities_.size(); ++i)
@@ -243,7 +253,7 @@ int SlidingToleranceMethod<N, M, ObjectiveFunctionType>::FindTolerantVertex(cons
 																			std::pair<PolyhedronVertex<N>, double>& tolerantVertex, double t)
 {
 	double criterionT = -1.0;
-	auto& nelderMeadMethod = CreateNelderMeadMethodObject<N, 0>(initialVertex.first, t, std::bind1st(std::mem_fn(&SlidingToleranceMethod::CalculateCriterionT), this));
+	auto& nelderMeadMethod = CreateNelderMeadMethodObject<N, 0>(initialVertex.first, t, std::bind1st(std::mem_fun(&SlidingToleranceMethod::CalculateCriterionT), this));
 	std::pair<PolyhedronVertex<N>, double> prevLowVertexT = initialVertex;
 
 	while (true)
@@ -281,7 +291,7 @@ int SlidingToleranceMethod<N, M, ObjectiveFunctionType>::FindTolerantVertex(cons
 		}
 		else
 		{
-			if (CalculateA() > std::numeric_limits<double>::epsilon())
+			if (CalculateA(nelderMeadMethod) > 1e-7)
 				continue;
 			else
 				return -1;
@@ -332,7 +342,7 @@ int SlidingToleranceMethod<N, M, ObjectiveFunctionType>::FindMinimum()
 
 		if (reflectionVertex.second < lowVertex.second)
 		{
-			auto& expansionVertex = mainNelderMead_.Expancion();
+			auto& expansionVertex = mainNelderMead_.Expansion();
 			criterionT = CalculateCriterionT(expansionVertex.first);
 
 			std::pair<PolyhedronVertex<N>, double> newExpansionVertex;
