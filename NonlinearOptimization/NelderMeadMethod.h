@@ -4,6 +4,7 @@
 #include <vector>
 #include <exception>
 
+#define EPSILON 1e-12
 
 template <size_t N>
 struct Less
@@ -54,7 +55,6 @@ private:
 	size_t numberSimplexVertices_;
 	double alfa_, betta_, gamma_;
 	std::vector<std::pair<PolyhedronVertex<N>, double> > verticesAndValuesObjectiveFunction_;
-
 	std::pair<PolyhedronVertex<N>, double> lowVertex_, highVertex_, centerOfGravity_;
 	std::pair<PolyhedronVertex<N>, double> reflectionVertex_, expansionVertex_, contractionVertex_;
 };
@@ -108,15 +108,10 @@ std::pair<PolyhedronVertex<N>, double>& NelderMeadMethod<N, M, Fn>::FindCenterOf
 	centerOfGravity_.first = PolyhedronVertex<N>();
 
 	for (size_t i = 0; i < numberSimplexVertices_; ++i)
-	{
-		if (simplex_[i] != highVertex_.first)
-			centerOfGravity_.first += simplex_[i];
-	}
+		centerOfGravity_.first += simplex_[i];
 
-	double oneDivN = 1.0 / N;
-	for (size_t j = 0; j < N; ++j)
-		centerOfGravity_.first[j] *= oneDivN;
-
+	centerOfGravity_.first -= highVertex_.first;
+	centerOfGravity_.first = (1.0 / N) * centerOfGravity_.first ;
 	centerOfGravity_.second = GetValueObjectiveFunction(centerOfGravity_.first);
 
 	return centerOfGravity_;
@@ -236,7 +231,7 @@ bool NelderMeadMethod<N, M, Fn>::IsAlgorithmCoverged()
 
 	valueConditionExpression = sqrt((1.0 / numberSimplexVertices_) * valueConditionExpression);
 
-	if (valueConditionExpression < std::numeric_limits<double>::epsilon())
+	if (valueConditionExpression < EPSILON)
 		return true;
 	return false;
 }

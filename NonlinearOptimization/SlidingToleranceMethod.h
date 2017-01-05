@@ -2,6 +2,8 @@
 
 #include "NelderMeadMethod.h"
 
+#define EPSILON_A 1.0e-7
+
 template <size_t N, typename InequalityBoundaryConditionsType>
 class SlidingToleranceInterpolation
 {
@@ -119,6 +121,8 @@ public:
 	double CalculateDistanceBetweenPolyhedronVertices(const PolyhedronVertex<N>& lowBorderOfChange, const PolyhedronVertex<N>& highBorderOfChange) const;
 	double CalculateCriterionT(PolyhedronVertex<N> vertex);
 	double CalculateCriterionTolerance();
+
+	int CalculateMinimumOfCriterionT();
 
 	int FindTolerantVertex(const std::pair<PolyhedronVertex<N>, double>& initialVertex, std::pair<PolyhedronVertex<N>, double>& tolerantVertex, double t);
 	int FindMinimum();
@@ -249,6 +253,13 @@ double SlidingToleranceMethod<N, M, ObjectiveFunctionType>::CalculateCriterionTo
 
 
 template <size_t N, size_t M, typename ObjectiveFunctionType>
+int SlidingToleranceMethod<N, M, ObjectiveFunctionType>::CalculateMinimumOfCriterionT()
+{
+	return -1;
+}
+
+
+template <size_t N, size_t M, typename ObjectiveFunctionType>
 int SlidingToleranceMethod<N, M, ObjectiveFunctionType>::FindTolerantVertex(const std::pair<PolyhedronVertex<N>, double>& initialVertex, 
 																			std::pair<PolyhedronVertex<N>, double>& tolerantVertex, double t)
 {
@@ -291,10 +302,10 @@ int SlidingToleranceMethod<N, M, ObjectiveFunctionType>::FindTolerantVertex(cons
 		}
 		else
 		{
-			if (CalculateA(nelderMeadMethod) > 1e-7)
+			if (CalculateA(nelderMeadMethod) > EPSILON_A)
 				continue;
 			else
-				return -1;
+				return CalculateMinimumOfCriterionT();
 		}
 		prevLowVertexT = curLowVertexT;
 	}
@@ -306,7 +317,7 @@ template <size_t N, size_t M, typename ObjectiveFunctionType>
 int SlidingToleranceMethod<N, M, ObjectiveFunctionType>::FindMinimum()
 {
 	double criterionT = -1.0;
-	while ((criterionToleranceCur_ = CalculateCriterionTolerance()) > std::numeric_limits<double>::epsilon())
+	while ((criterionToleranceCur_ = CalculateCriterionTolerance()) > EPSILON)
 	{
 		double t = 0.05 * criterionToleranceCur_;
 
@@ -325,7 +336,7 @@ int SlidingToleranceMethod<N, M, ObjectiveFunctionType>::FindMinimum()
 
 		auto& centerOfGravity = mainNelderMead_.FindCenterOfGravity();
 
-		if (criterionToleranceCur_ < std::numeric_limits<double>::epsilon())
+		if (criterionToleranceCur_ < EPSILON)
 			return 0;
 
 		auto& reflectionVertex = mainNelderMead_.Reflection();
